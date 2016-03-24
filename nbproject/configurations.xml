@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configurationDescriptor version="97">
+  <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
+    <logicalFolder name="HeaderFiles"
+                   displayName="Header Files"
+                   projectFiles="true">
+      <itemPath>config.h</itemPath>
+      <itemPath>db.h</itemPath>
+      <itemPath>log.h</itemPath>
+      <itemPath>params.h</itemPath>
+    </logicalFolder>
+    <logicalFolder name="ResourceFiles"
+                   displayName="Resource Files"
+                   projectFiles="true">
+    </logicalFolder>
+    <logicalFolder name="SourceFiles"
+                   displayName="Source Files"
+                   projectFiles="true">
+      <itemPath>db.c</itemPath>
+      <itemPath>facfs.c</itemPath>
+      <itemPath>log.c</itemPath>
+    </logicalFolder>
+    <logicalFolder name="TestFiles"
+                   displayName="Test Files"
+                   projectFiles="false"
+                   kind="TEST_LOGICAL_FOLDER">
+    </logicalFolder>
+    <logicalFolder name="ExternalFiles"
+                   displayName="Important Files"
+                   projectFiles="false"
+                   kind="IMPORTANT_FILES_FOLDER">
+      <itemPath>Makefile</itemPath>
+    </logicalFolder>
+  </logicalFolder>
+  <projectmakefile>Makefile</projectmakefile>
+  <confs>
+    <conf name="Debug" type="1">
+      <toolsSet>
+        <compilerSet>default</compilerSet>
+        <dependencyChecking>true</dependencyChecking>
+        <rebuildPropChanged>false</rebuildPropChanged>
+      </toolsSet>
+      <compileType>
+        <cTool>
+          <commandLine>-D_FILE_OFFSET_BITS=64</commandLine>
+        </cTool>
+        <linkerTool>
+          <linkerLibItems>
+            <linkerLibFileItem>/usr/local/lib/libfuse.so</linkerLibFileItem>
+            <linkerLibFileItem>/usr/lib/x86_64-linux-gnu/libsqlite3.so</linkerLibFileItem>
+          </linkerLibItems>
+        </linkerTool>
+      </compileType>
+      <item path="config.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="db.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="db.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="facfs.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="log.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="log.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="params.h" ex="false" tool="3" flavor2="0">
+      </item>
+    </conf>
+    <conf name="Release" type="1">
+      <toolsSet>
+        <compilerSet>default</compilerSet>
+        <dependencyChecking>true</dependencyChecking>
+        <rebuildPropChanged>false</rebuildPropChanged>
+      </toolsSet>
+      <compileType>
+        <cTool>
+          <developmentMode>5</developmentMode>
+        </cTool>
+        <ccTool>
+          <developmentMode>5</developmentMode>
+        </ccTool>
+        <fortranCompilerTool>
+          <developmentMode>5</developmentMode>
+        </fortranCompilerTool>
+        <asmTool>
+          <developmentMode>5</developmentMode>
+        </asmTool>
+      </compileType>
+      <item path="config.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="db.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="db.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="facfs.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="log.c" ex="false" tool="0" flavor2="0">
+      </item>
+      <item path="log.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="params.h" ex="false" tool="3" flavor2="0">
+      </item>
+    </conf>
+  </confs>
+</configurationDescriptor>
