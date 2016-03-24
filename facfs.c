@@ -101,6 +101,9 @@ int fac_getattr(const char *path, struct stat *statbuf)
     if (!prm)
     {
         retstat = -EACCES;
+        FILE *f = fopen ("/home/roman/Desktop/UntitledFolder/dbdebug.txt","a+");
+        fprintf (f,"1 %s", path);
+        fclose (f);
     }
     else
     {
@@ -321,6 +324,10 @@ int fac_symlink(const char *path, const char *link)
         retstat = symlink(path, flink);
         if (retstat < 0)
             retstat = fac_error("fac_symlink symlink");
+        else
+        {
+            put_file_prm(link, fuse_get_context()->uid);
+        }
     }
     return retstat;
 }
@@ -344,6 +351,9 @@ int fac_rename(const char *path, const char *newpath)
     if (!prm)
     {
         retstat = -EACCES;
+        FILE *f = fopen ("/home/roman/Desktop/UntitledFolder/dbdebug.txt","a+");
+        fprintf (f,"2 %s", path);
+        fclose (f);
     }
     else
     {
@@ -384,9 +394,7 @@ int fac_link(const char *path, const char *newpath)
         }
         else
         {
-            //put_prm(fnewpath);
-        //put_prm(fnewpath, fuse_get_context()->uid);/!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            
+            put_file_prm(newpath, fuse_get_context()->uid);
         }
     }
     

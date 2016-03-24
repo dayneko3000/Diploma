@@ -48,7 +48,7 @@ static int path_callback(void *notused, int coln, char **rows, char **colnm)
 char * dir_path(const char * file)
 {
     int len = 0;
-    for (int i = strlen(file) - 1; i > 0; i --){
+    for (int i = strlen(file) - 1; i >= 0; i --){
         if (file[i] == '/'){
             len = i + 1;
             break;
@@ -133,7 +133,7 @@ int check_prm_existence(char * file)
 
 int select_file_prm(char * file, int uid, int op_num)
 {
-    char *err = 0, *res = 0, *query = 0;
+    char *err = NULL, *res = NULL, *query = NULL;
     
 /*
     if (is_hidden(file))
@@ -151,7 +151,7 @@ int select_file_prm(char * file, int uid, int op_num)
         return 0;
     }
     
-    int result = atoi(res) & op_num == 0 ? 0 : 1;
+    int result = atoi(res) & op_num != 0;
 
     free(res);
     free(query);
@@ -282,13 +282,13 @@ int rem_prm(char *file)
 {
     char *err = 0;
     char delete_query[500];
-    sprintf(delete_query, "delete from prm_list where path like \"%s%%\";", file);
+    sprintf(delete_query, "delete from prm_list where path = \"%s\";", file);
     
     if(sqlite3_exec(db, delete_query, 0, 0, &err) != SQLITE_OK)
     {
         //что-то не так
     }
-    sprintf(delete_query, "delete from own_list where path like \"%s%%\";", file);
+    sprintf(delete_query, "delete from own_list where path = \"%s\";", file);
     sqlite3_exec(db, delete_query, 0, 0, &err);
     
     return 0;
@@ -323,12 +323,12 @@ int upd_prm(char *path, char *newpath, char *table)
             temp[j - strlen(path)] = res[i][j];
         temp[dif_len] = '\0';
         if (dif_len == 0)
-            sprintf(update_query, "update or ignore %s set path = \"%s\" where path = \"%s\";", table, newpath, res[i]);
+            sprintf(update_query, "update %s set path = \"%s\" where path = \"%s\";", table, newpath, res[i]);
         else
-            sprintf(update_query, "update or ignore %s set path = \"%s%s\" where path = \"%s\";", table, newpath, temp, res[i]);
+            sprintf(update_query, "update %s set path = \"%s%s\" where path = \"%s\";", table, newpath, temp, res[i]);
         if (sqlite3_exec(db, update_query, 0, 0, &err) != SQLITE_OK)
         {
-            //что-то не так
+            rem_prm(res[i]);
         }
         
         free(temp);
@@ -346,7 +346,7 @@ int upd_prm(char *path, char *newpath, char *table)
 
 int init_db(char *rootdir, char *mountdir, uid_t *uid)
 {
-    char *err = 0;
+    char *err = NULL;
     
     int len = strlen(rootdir);
     char *db_name = "prm.dblite";
@@ -382,14 +382,14 @@ int init_db(char *rootdir, char *mountdir, uid_t *uid)
 
     free(res);
     
-    char *create_dir_table_query = "create table if not exists path_list(mount text, root text);";
+    char *create_dir_table_query = "create table if not exists dir_list(mount text, root text);";
     sqlite3_exec(db, create_dir_table_query, 0, 0, &err);
     
-    char *path_unique_index_create_query = "create unique index if not exists dir_index on path_list(mount, root);";  
-    sqlite3_exec(db, path_unique_index_create_query, 0, 0, &err);
+    char *delete_query = "delete from dir_list;";  
+    sqlite3_exec(db, delete_query, 0, 0, &err);
     
     char insert_dirs_query [500];
-    sprintf(insert_dirs_query, "insert or replace into path_list values(\"%s\", \"%s\");", mountdir, rootdir);
+    sprintf(insert_dirs_query, "insert into dir_list values(\"%s\", \"%s\");", mountdir, rootdir);
     sqlite3_exec(db, insert_dirs_query, 0, 0, &err);
     
     return 0;
