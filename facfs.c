@@ -1262,12 +1262,21 @@ int main(int argc, char *argv[])
 
     // Pull the rootdir out of the argument list and save it in my
     // internal data
+    
+    if (strcmp("-log", argv[1]) == 0)
+    {
+        fac_data->logfile = log_open();
+        argc --;
+        argv ++;
+    }
+    else
+        fac_data->logfile = NULL;
+        
+    
     fac_data->rootdir = realpath(argv[argc-2], NULL);
     argv[argc-2] = argv[argc-1];
     argv[argc-1] = NULL;
     argc--;
-    
-    fac_data->logfile = log_open();
     
     init_db(fac_data->rootdir, realpath(argv[argc-1], NULL), getuid());
     

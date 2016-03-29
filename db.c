@@ -151,7 +151,7 @@ int select_file_prm(char * file, int uid, int op_num)
         return 0;
     }
     
-    int result = atoi(res) & op_num != 0;
+    int result = (atoi(res) & op_num) != 0;
 
     free(res);
     free(query);

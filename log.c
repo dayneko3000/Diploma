@@ -29,6 +29,7 @@ FILE *log_open()
     
     // very first thing, open up the logfile and mark that we got in
     // here.  If we can't open the logfile, we're dead.
+    
     logfile = fopen("facfs.log", "w");
     if (logfile == NULL) {
 	perror("logfile");
@@ -43,6 +44,8 @@ FILE *log_open()
 
 void log_msg(const char *format, ...)
 {
+    if (FAC_DATA->logfile == NULL)
+        return;
     va_list ap;
     va_start(ap, format);
     vfprintf(FAC_DATA->logfile, format, ap);
