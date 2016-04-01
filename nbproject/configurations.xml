@@ -17,7 +17,7 @@
                    displayName="Source Files"
                    projectFiles="true">
       <itemPath>db.c</itemPath>
-      <itemPath>facfs.c</itemPath>
+      <itemPath>ftfs.c</itemPath>
       <itemPath>log.c</itemPath>
     </logicalFolder>
     <logicalFolder name="TestFiles"
@@ -57,7 +57,7 @@
       </item>
       <item path="db.h" ex="false" tool="3" flavor2="0">
       </item>
-      <item path="facfs.c" ex="false" tool="0" flavor2="0">
+      <item path="ftfs.c" ex="false" tool="0" flavor2="0">
       </item>
       <item path="log.c" ex="false" tool="0" flavor2="0">
       </item>
@@ -92,7 +92,7 @@
       </item>
       <item path="db.h" ex="false" tool="3" flavor2="0">
       </item>
-      <item path="facfs.c" ex="false" tool="0" flavor2="0">
+      <item path="ftfs.c" ex="false" tool="0" flavor2="0">
       </item>
       <item path="log.c" ex="false" tool="0" flavor2="0">
       </item>

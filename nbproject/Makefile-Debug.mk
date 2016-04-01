@@ -36,7 +36,7 @@ OBJECTDIR=${CND_BUILDDIR}/${CND_CONF}/${CND_PLATFORM}
 # Object Files
 OBJECTFILES= \
 	${OBJECTDIR}/db.o \
-	${OBJECTDIR}/facfs.o \
+	${OBJECTDIR}/ftfs.o \
 	${OBJECTDIR}/log.o
 
 
@@ -73,10 +73,10 @@ ${OBJECTDIR}/db.o: db.c
 	${RM} "$@.d"
 	$(COMPILE.c) -g -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/db.o db.c
 
-${OBJECTDIR}/facfs.o: facfs.c 
+${OBJECTDIR}/ftfs.o: ftfs.c 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
-	$(COMPILE.c) -g -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/facfs.o facfs.c
+	$(COMPILE.c) -g -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/ftfs.o ftfs.c
 
 ${OBJECTDIR}/log.o: log.c 
 	${MKDIR} -p ${OBJECTDIR}

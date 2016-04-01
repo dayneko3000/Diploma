@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2012 Joseph J. Pfeiffer, Jr., Ph.D. <pfeiffer@cs.nmsu.edu>
+  Copyright (C) 2016 Roman Y. Dayneko, <dayneko3000@gmail.com>
 
   This program can be distributed under the terms of the GNU GPLv3.
   See the file COPYING.
@@ -20,13 +20,13 @@
 // setlinebuf() later in consequence.
 #define _XOPEN_SOURCE 500
 
-// maintain bbfs state in here
+// maintain ftfs state in here
 #include <limits.h>
 #include <stdio.h>
-struct fac_state {
+struct ft_state {
     FILE *logfile;
     char *rootdir;
 };
-#define FAC_DATA ((struct fac_state *) fuse_get_context()->private_data)
+#define FT_DATA ((struct ft_state *) fuse_get_context()->private_data)
 
 #endif

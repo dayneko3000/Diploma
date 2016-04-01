@@ -1,14 +1,16 @@
 /*
-  Copyright (C) 2012 Joseph J. Pfeiffer, Jr., Ph.D. <pfeiffer@cs.nmsu.edu>
+  Copyright (C) 2016 Roman Y. Dayneko, <dayneko3000@gmail.com>
 
   This program can be distributed under the terms of the GNU GPLv3.
   See the file COPYING.
-
-  Since the point of this filesystem is to learn FUSE and its
-  datastructures, I want to see *everything* that happens related to
-  its data structures.  This file contains macros and functions to
-  accomplish this.
 */
+
+/* 
+ * File:   log.c
+ * Author: Roman
+ *
+ * Created on January 9, 2016, 3:00 PM
+ */
 
 #include "params.h"
 
@@ -44,11 +46,11 @@ FILE *log_open()
 
 void log_msg(const char *format, ...)
 {
-    if (FAC_DATA->logfile == NULL)
+    if (FT_DATA->logfile == NULL)
         return;
     va_list ap;
     va_start(ap, format);
-    vfprintf(FAC_DATA->logfile, format, ap);
+    vfprintf(FT_DATA->logfile, format, ap);
 }
 
 // fuse context
@@ -75,8 +77,8 @@ void log_fuse_context(struct fuse_context *context)
     /** Private filesystem data */
     //	void *private_data;
     log_struct(context, private_data, %08x, );
-    log_struct(((struct fac_state *)context->private_data), logfile, %08x, );
-    log_struct(((struct fac_state *)context->private_data), rootdir, %s, );
+    log_struct(((struct ft_state *)context->private_data), logfile, %08x, );
+    log_struct(((struct ft_state *)context->private_data), rootdir, %s, );
 	
     /** Umask of the calling process (introduced in version 2.8) */
     //	mode_t umask;

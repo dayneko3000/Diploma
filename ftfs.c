@@ -1,26 +1,14 @@
 /*
-  Flexible Access Control File System
-  Copyright (C) 2012 Joseph J. Pfeiffer, Jr., Ph.D. <pfeiffer@cs.nmsu.edu>
+  Fine Tuning File System
+  Copyright (C) 2016 Roman Y. Dayneko, <dayneko3000@gmail.com>
 
   This program can be distributed under the terms of the GNU GPLv3.
   See the file COPYING.
 
-  This code is derived from function prototypes found /usr/include/fuse/fuse.h
-  Copyright (C) 2001-2007  Miklos Szeredi <miklos@szeredi.hu>
-  His code is licensed under the LGPLv2.
-  A copy of that code is included in the file fuse.h
+  This code is derived from function BBFS found http://www.cs.nmsu.edu/~pfeiffer/fuse-tutorial/
+  Copyright (C) 2012 Joseph J. Pfeiffer, Jr., Ph.D. <pfeiffer@cs.nmsu.edu>
+  His code is licensed under the GNU GPLv3.
   
-  The point of this FUSE filesystem is to provide an introduction to
-  FUSE.  It was my first FUSE filesystem as I got to know the
-  software; hopefully, the comments in this code will help people who
-  follow later to get a gentler introduction.
-
-  This might be called a no-op filesystem:  it doesn't impose
-  filesystem semantics on top of any other existing structure.  It
-  simply reports the requests that come in, and passes them to an
-  underlying filesystem.  The information is saved in a logfile named
-  facfs.log, in the directory from which you run facfs.
-
   gcc -Wall `pkg-config fuse --cflags --libs` -o facfs facfs.c
 */
 
@@ -49,7 +37,7 @@
 const char * debug_path =  "/home/roman/Desktop/UntitledFolder/debug.txt";
 
 // Report errors to logfile and give -errno to caller
-static int fac_error(char *str)
+static int ft_error(char *str)
 {
     int ret = -errno;
     
@@ -65,14 +53,14 @@ static int fac_error(char *str)
 //  have the mountpoint.  I'll save it away early on in main(), and then
 //  whenever I need a path for something I'll call this to construct
 //  it.
-static void fac_fullpath(char fpath[PATH_MAX], const char *path)
+static void ft_fullpath(char fpath[PATH_MAX], const char *path)
 {
-    strcpy(fpath, FAC_DATA->rootdir);
+    strcpy(fpath, FT_DATA->rootdir);
     strncat(fpath, path, PATH_MAX); // ridiculously long paths will
 				    // break here
 
-    log_msg("    fac_fullpath:  rootdir = \"%s\", path = \"%s\", fpath = \"%s\"\n",
-	    FAC_DATA->rootdir, path, fpath);
+    log_msg("    ft_fullpath:  rootdir = \"%s\", path = \"%s\", fpath = \"%s\"\n",
+	    FT_DATA->rootdir, path, fpath);
 }
 
 ///////////////////////////////////////////////////////////
@@ -86,17 +74,17 @@ static void fac_fullpath(char fpath[PATH_MAX], const char *path)
  * ignored.  The 'st_ino' field is ignored except if the 'use_ino'
  * mount option is given.
  */
-int fac_getattr(const char *path, struct stat *statbuf)
+int ft_getattr(const char *path, struct stat *statbuf)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
     
-    log_msg("\nfac_getattr(path=\"%s\", statbuf=0x%08x)\n",
+    log_msg("\nft_getattr(path=\"%s\", statbuf=0x%08x)\n",
 	  path, statbuf);
     
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
 
-    int prm = select_dir_prm(path, fuse_get_context()->uid, GETATTR, 1);
+    int prm = select_dir_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, GETATTR, 1);
 
     if (!prm)
     {
@@ -109,7 +97,7 @@ int fac_getattr(const char *path, struct stat *statbuf)
     {
         retstat = lstat(fpath, statbuf);
         if (retstat != 0)
-            retstat = fac_error("fac_getattr lstat");
+            retstat = ft_error("ft_getattr lstat");
     }
     
     log_stat(statbuf);
@@ -125,21 +113,17 @@ int fac_getattr(const char *path, struct stat *statbuf)
  * buffer, it should be truncated.  The return value should be 0
  * for success.
  */
-// Note the system readlink() will truncate and lose the terminating
-// null.  So, the size passed to to the system readlink() must be one
-// less than the size passed to fac_readlink()
-// fac_readlink() code by Bernardo F Costa (thanks!)
-int fac_readlink(const char *path, char *link, size_t size)
+int ft_readlink(const char *path, char *link, size_t size)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
     
-    log_msg("fac_readlink(path=\"%s\", link=\"%s\", size=%d)\n",
+    log_msg("ft_readlink(path=\"%s\", link=\"%s\", size=%d)\n",
 	  path, link, size);
     
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
     
-    int prm = select_prm(path, fuse_get_context()->uid, READLINK);
+    int prm = select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, READLINK);
     
     if (!prm)
         retstat = -EACCES;
@@ -147,7 +131,7 @@ int fac_readlink(const char *path, char *link, size_t size)
     {
         retstat = readlink(fpath, link, size - 1);
         if (retstat < 0)
-            retstat = fac_error("fac_readlink readlink");
+            retstat = ft_error("ft_readlink readlink");
         else  {
             link[retstat] = '\0';
             retstat = 0;
@@ -162,19 +146,18 @@ int fac_readlink(const char *path, char *link, size_t size)
  * There is no create() operation, mknod() will be called for
  * creation of all non-directory, non-symlink nodes.
  */
-// shouldn't that comment be "if" there is no.... ?
-int fac_mknod(const char *path, mode_t mode, dev_t dev)
+int ft_mknod(const char *path, mode_t mode, dev_t dev)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
     
-    log_msg("\nfac_mknod(path=\"%s\", mode=0%3o, dev=%lld)\n",
+    log_msg("\nft_mknod(path=\"%s\", mode=0%3o, dev=%lld)\n",
 	  path, mode, dev);
     
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
     
     // On Linux this could just be 'mknod(path, mode, rdev)' but this
-    int prm = select_dir_prm(path, fuse_get_context()->uid, MKNOD, 1);
+    int prm = select_dir_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, MKNOD, 1);
     
     if (!prm)
         retstat = -EACCES;
@@ -184,27 +167,36 @@ int fac_mknod(const char *path, mode_t mode, dev_t dev)
         if (S_ISREG(mode)) {
             retstat = open(fpath, O_CREAT | O_EXCL | O_WRONLY, mode);
             if (retstat < 0)
-                retstat = fac_error("fac_mknod open");
+                retstat = ft_error("ft_mknod open");
             else {
                 retstat = close(retstat);
                 if (retstat < 0)
-                    retstat = fac_error("fac_mknod close");
+                    retstat = ft_error("ft_mknod close");
                 else
-                    put_file_prm(fpath, fuse_get_context()->uid);
+                {
+                    put_file_prm(path, fuse_get_context()->uid, fuse_get_context()->gid);
+                    //upd_prms(path, mode);
+                }
             }
         } else
             if (S_ISFIFO(mode)) {
                 retstat = mkfifo(fpath, mode);
                 if (retstat < 0)
-                    retstat = fac_error("fac_mknod mkfifo");
+                    retstat = ft_error("ft_mknod mkfifo");
                 else
-                    put_file_prm(fpath, fuse_get_context()->uid);
+                {
+                    put_file_prm(path, fuse_get_context()->uid, fuse_get_context()->gid);
+                    //upd_prms(path, mode);
+                }
             } else {
                 retstat = mknod(fpath, mode, dev);
                 if (retstat < 0)
-                    retstat = fac_error("fac_mknod mknod");
+                    retstat = ft_error("ft_mknod mknod");
                 else
-                    put_file_prm(fpath, fuse_get_context()->uid);
+                {
+                    put_file_prm(path, fuse_get_context()->uid, fuse_get_context()->gid);
+                   // upd_prms(path, mode);
+                }
             }
     }
     
@@ -212,17 +204,17 @@ int fac_mknod(const char *path, mode_t mode, dev_t dev)
 }
 
 /** Create a directory */
-int fac_mkdir(const char *path, mode_t mode)
+int ft_mkdir(const char *path, mode_t mode)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
     
-    log_msg("\nfac_mkdir(path=\"%s\", mode=0%3o)\n",
+    log_msg("\nft_mkdir(path=\"%s\", mode=0%3o)\n",
 	    path, mode);
     
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
     
-    int prm = select_dir_prm(path, fuse_get_context()->uid, MKDIR, 1);
+    int prm = select_dir_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, MKDIR, 1);
 
     if (!prm)
         retstat = -EACCES;
@@ -231,9 +223,12 @@ int fac_mkdir(const char *path, mode_t mode)
         retstat = mkdir(fpath, mode);
         
         if (retstat < 0)
-            retstat = fac_error("fac_mkdir mkdir");
+            retstat = ft_error("ft_mkdir mkdir");
         else
-            put_dir_prm(path, fuse_get_context()->uid);
+        {
+            put_file_prm(path, fuse_get_context()->uid, fuse_get_context()->gid);
+            //upd_prms(path, mode);
+        }
 
     }
     
@@ -241,17 +236,17 @@ int fac_mkdir(const char *path, mode_t mode)
 }
 
 /** Remove a file */
-int fac_unlink(const char *path)
+int ft_unlink(const char *path)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
     
-    log_msg("fac_unlink(path=\"%s\")\n",
+    log_msg("ft_unlink(path=\"%s\")\n",
 	    path);
     
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
     
-    int prm = select_prm(path, fuse_get_context()->uid, UNLINK);
+    int prm = select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, UNLINK);
     
     if (!prm)
         retstat = -EACCES;
@@ -259,7 +254,7 @@ int fac_unlink(const char *path)
     {
         retstat = unlink(fpath);
         if (retstat < 0)
-            retstat = fac_error("fac_unlink unlink");
+            retstat = ft_error("ft_unlink unlink");
         else
         {
             rem_prm(path);
@@ -270,17 +265,17 @@ int fac_unlink(const char *path)
 }
 
 /** Remove a directory */
-int fac_rmdir(const char *path)
+int ft_rmdir(const char *path)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
     
-    log_msg("fac_rmdir(path=\"%s\")\n",
+    log_msg("ft_rmdir(path=\"%s\")\n",
 	    path);
     
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
     
-    int prm = select_prm(path, fuse_get_context()->uid, RMDIR);
+    int prm = select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, RMDIR);
     
     if (!prm)
         retstat = -EACCES;
@@ -288,7 +283,7 @@ int fac_rmdir(const char *path)
     {
         retstat = rmdir(fpath);
         if (retstat < 0)
-            retstat = fac_error("fac_rmdir rmdir");
+            retstat = ft_error("ft_rmdir rmdir");
         else
         {
             rem_prm(fpath);
@@ -299,23 +294,19 @@ int fac_rmdir(const char *path)
 }
 
 /** Create a symbolic link */
-// The parameters here are a little bit confusing, but do correspond
-// to the symlink() system call.  The 'path' is where the link points,
-// while the 'link' is the link itself.  So we need to leave the path
-// unaltered, but insert the link into the mounted directory.
-int fac_symlink(const char *path, const char *link)
+int ft_symlink(const char *path, const char *link)
 {
     int retstat = 0;
     char flink[PATH_MAX];
     char fpath[PATH_MAX];
     
-    log_msg("\nfac_symlink(path=\"%s\", link=\"%s\")\n",
+    log_msg("\nft_symlink(path=\"%s\", link=\"%s\")\n",
 	    path, link);
     
-    fac_fullpath(flink, link);
-    fac_fullpath(fpath, path);
+    ft_fullpath(flink, link);
+    ft_fullpath(fpath, path);
     
-    int prm = select_prm(path, fuse_get_context()->uid, SYMLINK);
+    int prm = select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, SYMLINK);
 
     if (!prm)
         retstat = -EACCES;
@@ -323,30 +314,29 @@ int fac_symlink(const char *path, const char *link)
     {
         retstat = symlink(path, flink);
         if (retstat < 0)
-            retstat = fac_error("fac_symlink symlink");
+            retstat = ft_error("ft_symlink symlink");
         else
         {
-            put_file_prm(link, fuse_get_context()->uid);
+            put_file_prm(link, fuse_get_context()->uid, fuse_get_context()->gid);
         }
     }
     return retstat;
 }
 
 /** Rename a file */
-// both path and newpath are fs-relative
-int fac_rename(const char *path, const char *newpath)
+int ft_rename(const char *path, const char *newpath)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
     char fnewpath[PATH_MAX];
     
-    log_msg("\nfac_rename(fpath=\"%s\", newpath=\"%s\")\n",
+    log_msg("\nft_rename(fpath=\"%s\", newpath=\"%s\")\n",
 	    path, newpath);
     
-    fac_fullpath(fpath, path);
-    fac_fullpath(fnewpath, newpath);
+    ft_fullpath(fpath, path);
+    ft_fullpath(fnewpath, newpath);
     
-    int prm = select_prm(path, fuse_get_context()->uid, RENAME);
+    int prm = select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, RENAME);
     
     if (!prm)
     {
@@ -359,29 +349,29 @@ int fac_rename(const char *path, const char *newpath)
     {
         retstat = rename(fpath, fnewpath);
         if (retstat < 0)
-            retstat = fac_error("fac_rename rename");
+            retstat = ft_error("ft_rename rename");
         else
         {
-            upd_prm(path, newpath, "prm_list");
-            upd_prm(path, newpath, "own_list");
+            upd_path(path, newpath, "prm_list");
+            upd_path(path, newpath, "own_list");
         }
     }
     return retstat;
 }
 
 /** Create a hard link to a file */
-int fac_link(const char *path, const char *newpath)
+int ft_link(const char *path, const char *newpath)
 {
     int retstat = 0;
     char fpath[PATH_MAX], fnewpath[PATH_MAX];
     
-    log_msg("\nfac_link(path=\"%s\", newpath=\"%s\")\n",
+    log_msg("\nft_link(path=\"%s\", newpath=\"%s\")\n",
 	    path, newpath);
     
-    fac_fullpath(fpath, path);
-    fac_fullpath(fnewpath, newpath);
+    ft_fullpath(fpath, path);
+    ft_fullpath(fnewpath, newpath);
     
-    int prm = select_prm(path, fuse_get_context()->uid, LINK);
+    int prm = select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, LINK);
     
     if (!prm)
         retstat = -EACCES;
@@ -390,11 +380,11 @@ int fac_link(const char *path, const char *newpath)
         retstat = link(fpath, fnewpath);
         if (retstat < 0)
         {
-            retstat = fac_error("fac_link link");
+            retstat = ft_error("ft_link link");
         }
         else
         {
-            put_file_prm(newpath, fuse_get_context()->uid);
+            put_file_prm(newpath, fuse_get_context()->uid, fuse_get_context()->gid);
         }
     }
     
@@ -402,17 +392,17 @@ int fac_link(const char *path, const char *newpath)
 }
 
 /** Change the permission bits of a file */
-int fac_chmod(const char *path, mode_t mode)
+int ft_chmod(const char *path, mode_t mode)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
     
-    log_msg("\nfac_chmod(fpath=\"%s\", mode=0%03o)\n",
+    log_msg("\nft_chmod(fpath=\"%s\", mode=0%03o)\n",
 	    path, mode);
     
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
     
-    int prm = select_prm(path, fuse_get_context()->uid, CHMOD);
+    int prm = select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, CHMOD);
     
     if (!prm)
         retstat = -EACCES;
@@ -420,25 +410,27 @@ int fac_chmod(const char *path, mode_t mode)
     {
         retstat = chmod(fpath, mode);
         if (retstat < 0)
-            retstat = fac_error("fac_chmod chmod");
+            retstat = ft_error("ft_chmod chmod");
+        else
+            upd_prms(path, mode);
     }
     
     return retstat;
 }
 
 /** Change the owner and group of a file */
-int fac_chown(const char *path, uid_t uid, gid_t gid)
+int ft_chown(const char *path, uid_t uid, gid_t gid)
   
 {
     int retstat = 0;
     char fpath[PATH_MAX];
     
-    log_msg("\nfac_chown(path=\"%s\", uid=%d, gid=%d)\n",
+    log_msg("\nft_chown(path=\"%s\", uid=%d, gid=%d)\n",
 	    path, uid, gid);
     
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
     
-    int prm = select_prm(path, fuse_get_context()->uid, CHOWN);
+    int prm = select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, CHOWN);
     
     if (!prm)
         retstat = -EACCES;
@@ -447,25 +439,27 @@ int fac_chown(const char *path, uid_t uid, gid_t gid)
         retstat = chown(fpath, uid, gid);
         if (retstat < 0)
         {
-            retstat = fac_error("fac_chown chown");
+            retstat = ft_error("ft_chown chown");
         }
+        else
+            upd_own(path, uid, gid);
     }
     
     return retstat;
 }
 
 /** Change the size of a file */
-int fac_truncate(const char *path, off_t newsize)
+int ft_truncate(const char *path, off_t newsize)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
     
-    log_msg("\nfac_truncate(path=\"%s\", newsize=%lld)\n",
+    log_msg("\nft_truncate(path=\"%s\", newsize=%lld)\n",
 	    path, newsize);
     
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
     
-    int prm = select_prm(path, fuse_get_context()->uid, TRUNCATE);
+    int prm = select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, TRUNCATE);
 
     if (!prm)
         retstat = -EACCES;
@@ -473,7 +467,7 @@ int fac_truncate(const char *path, off_t newsize)
     {
         retstat = truncate(fpath, newsize);
         if (retstat < 0)
-            fac_error("fac_truncate truncate");
+            ft_error("ft_truncate truncate");
     }
     
     return retstat;
@@ -481,17 +475,17 @@ int fac_truncate(const char *path, off_t newsize)
 
 /** Change the access and/or modification times of a file */
 /* note -- I'll want to change this as soon as 2.6 is in debian testing */
-int fac_utime(const char *path, struct utimbuf *ubuf)
+int ft_utime(const char *path, struct utimbuf *ubuf)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
     
-    log_msg("\nfac_utime(path=\"%s\", ubuf=0x%08x)\n",
+    log_msg("\nft_utime(path=\"%s\", ubuf=0x%08x)\n",
 	    path, ubuf);
     
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
     
-    int prm = select_prm(path, fuse_get_context()->uid, UTIME);
+    int prm = select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, UTIME);
     
     if (!prm)
     {
@@ -501,7 +495,7 @@ int fac_utime(const char *path, struct utimbuf *ubuf)
     {
         retstat = utime(fpath, ubuf);
         if (retstat < 0)
-            retstat = fac_error("fac_utime utime");
+            retstat = ft_error("ft_utime utime");
     }
     
     return retstat;
@@ -517,18 +511,18 @@ int fac_utime(const char *path, struct utimbuf *ubuf)
  *
  * Changed in version 2.2
  */
-int fac_open(const char *path, struct fuse_file_info *fi)
+int ft_open(const char *path, struct fuse_file_info *fi)
 {
     int retstat = 0;
     int fd;
     char fpath[PATH_MAX];
     
-    log_msg("\nfac_open(path\"%s\", fi=0x%08x)\n",
+    log_msg("\nft_open(path\"%s\", fi=0x%08x)\n",
 	    path, fi);
     
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
     
-    int prm = select_prm(path, fuse_get_context()->uid, OPEN);
+    int prm = select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, OPEN);
     
     if (!prm)
        retstat = -EACCES;
@@ -536,7 +530,7 @@ int fac_open(const char *path, struct fuse_file_info *fi)
     {
         fd = open(fpath, fi->flags);
         if (fd < 0)
-            retstat = fac_error("fac_open open");
+            retstat = ft_error("ft_open open");
 
         fi->fh = fd;
         log_fi(fi);
@@ -556,24 +550,19 @@ int fac_open(const char *path, struct fuse_file_info *fi)
  *
  * Changed in version 2.2
  */
-// I don't fully understand the documentation above -- it doesn't
-// match the documentation for the read() system call which says it
-// can return with anything up to the amount of data requested. nor
-// with the fusexmp code which returns the amount of data also
-// returned by read.
-int fac_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
+int ft_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
     int retstat = 0;
      
-    log_msg("\nfac_read(path=\"%s\", buf=0x%08x, size=%d, offset=%lld, fi=0x%08x)\n",
+    log_msg("\nft_read(path=\"%s\", buf=0x%08x, size=%d, offset=%lld, fi=0x%08x)\n",
 	    path, buf, size, offset, fi);
     // no need to get fpath on this one, since I work from fi->fh not the path
     log_fi(fi);
     
     char fpath[PATH_MAX];
-    fac_fullpath(fpath, path); //but I need fpath for db operations
+    ft_fullpath(fpath, path); //but I need fpath for db operations
     
-    int prm = select_prm(path, fuse_get_context()->uid, READ);
+    int prm = select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, READ);
     
     if (!prm)
        retstat = -EACCES;
@@ -581,7 +570,7 @@ int fac_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
     {
         retstat = pread(fi->fh, buf, size, offset);
         if (retstat < 0)
-            retstat = fac_error("fac_read read");
+            retstat = ft_error("ft_read read");
     }
     
     return retstat;
@@ -595,22 +584,17 @@ int fac_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
  *
  * Changed in version 2.2
  */
-// As  with read(), the documentation above is inconsistent with the
-// documentation for the write() system call.
-int fac_write(const char *path, const char *buf, size_t size, off_t offset,
+int ft_write(const char *path, const char *buf, size_t size, off_t offset,
 	     struct fuse_file_info *fi)
 {
     int retstat = 0;
     
-    log_msg("\nfac_write(path=\"%s\", buf=0x%08x, size=%d, offset=%lld, fi=0x%08x)\n",
+    log_msg("\nft_write(path=\"%s\", buf=0x%08x, size=%d, offset=%lld, fi=0x%08x)\n",
 	    path, buf, size, offset, fi
 	    );
-    // no need to get fpath on this one, since I work from fi->fh not the path
     log_fi(fi);
-    char fpath[PATH_MAX];
-    fac_fullpath(fpath, path); //but I need fpath for db operations
     
-    int prm = select_prm(path, fuse_get_context()->uid, WRITE);
+    int prm = select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, WRITE);
     
     if (!prm)
        retstat = -EACCES;
@@ -618,7 +602,7 @@ int fac_write(const char *path, const char *buf, size_t size, off_t offset,
     {
         retstat = pwrite(fi->fh, buf, size, offset);
         if (retstat < 0)
-            retstat = fac_error("fac_write pwrite");
+            retstat = ft_error("ft_write pwrite");
     }
     
     return retstat;
@@ -631,16 +615,16 @@ int fac_write(const char *path, const char *buf, size_t size, off_t offset,
  * Replaced 'struct statfs' parameter with 'struct statvfs' in
  * version 2.5
  */
-int fac_statfs(const char *path, struct statvfs *statv)
+int ft_statfs(const char *path, struct statvfs *statv)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
     
-    log_msg("\nfac_statfs(path=\"%s\", statv=0x%08x)\n",
+    log_msg("\nft_statfs(path=\"%s\", statv=0x%08x)\n",
 	    path, statv);
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
     
-    int prm = select_prm(path, fuse_get_context()->uid, STATFS);
+    int prm = select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, STATFS);
     
     if (!prm)
        retstat = -EACCES;
@@ -649,7 +633,7 @@ int fac_statfs(const char *path, struct statvfs *statv)
         // get stats for underlying filesystem
         retstat = statvfs(fpath, statv);
         if (retstat < 0)
-            retstat = fac_error("fac_statfs statvfs");
+            retstat = ft_error("ft_statfs statvfs");
 
         log_statvfs(statv);
     }
@@ -680,11 +664,11 @@ int fac_statfs(const char *path, struct statvfs *statv)
  *
  * Changed in version 2.2
  */
-int fac_flush(const char *path, struct fuse_file_info *fi)
+int ft_flush(const char *path, struct fuse_file_info *fi)
 {
     int retstat = 0;
     
-    log_msg("\nfac_flush(path=\"%s\", fi=0x%08x)\n", path, fi);
+    log_msg("\nft_flush(path=\"%s\", fi=0x%08x)\n", path, fi);
     // no need to get fpath on this one, since I work from fi->fh not the path
     log_fi(fi);
     //do nothing
@@ -705,11 +689,11 @@ int fac_flush(const char *path, struct fuse_file_info *fi)
  *
  * Changed in version 2.2
  */
-int fac_release(const char *path, struct fuse_file_info *fi)
+int ft_release(const char *path, struct fuse_file_info *fi)
 {
     int retstat = 0;
     //closing the file is always allowed
-    log_msg("\nfac_release(path=\"%s\", fi=0x%08x)\n",
+    log_msg("\nft_release(path=\"%s\", fi=0x%08x)\n",
 	  path, fi);
     log_fi(fi);
 
@@ -727,19 +711,19 @@ int fac_release(const char *path, struct fuse_file_info *fi)
  *
  * Changed in version 2.2
  */
-int fac_fsync(const char *path, int datasync, struct fuse_file_info *fi)
+int ft_fsync(const char *path, int datasync, struct fuse_file_info *fi)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
-    fac_fullpath(fpath, path); //but i need fpath for db operations
+    ft_fullpath(fpath, path); //I need fpath for db operations
     
-    int prm = select_prm(path, fuse_get_context()->uid, FSYNC);
+    int prm = select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, FSYNC);
     
     if (!prm)
        retstat = -EACCES;
     else
     {
-        log_msg("\nfac_fsync(path=\"%s\", datasync=%d, fi=0x%08x)\n",
+        log_msg("\nft_fsync(path=\"%s\", datasync=%d, fi=0x%08x)\n",
                 path, datasync, fi);
         log_fi(fi);
 
@@ -752,7 +736,7 @@ int fac_fsync(const char *path, int datasync, struct fuse_file_info *fi)
             retstat = fsync(fi->fh);
 
         if (retstat < 0)
-            fac_error("fac_fsync fsync");
+            ft_error("ft_fsync fsync");
     }
     
     return retstat;
@@ -760,35 +744,35 @@ int fac_fsync(const char *path, int datasync, struct fuse_file_info *fi)
 
 #ifdef HAVE_SYS_XATTR_H
 /** Set extended attributes */
-int fac_setxattr(const char *path, const char *name, const char *value, size_t size, int flags)
+int ft_setxattr(const char *path, const char *name, const char *value, size_t size, int flags)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
     
-    log_msg("\nfac_setxattr(path=\"%s\", name=\"%s\", value=\"%s\", size=%d, flags=0x%08x)\n",
+    log_msg("\nft_setxattr(path=\"%s\", name=\"%s\", value=\"%s\", size=%d, flags=0x%08x)\n",
 	    path, name, value, size, flags);
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
     
     retstat = lsetxattr(fpath, name, value, size, flags);
     if (retstat < 0)
-	retstat = fac_error("fac_setxattr lsetxattr");
+	retstat = ft_error("ft_setxattr lsetxattr");
     
     return retstat;
 }
 
 /** Get extended attributes */
-int fac_getxattr(const char *path, const char *name, char *value, size_t size)
+int ft_getxattr(const char *path, const char *name, char *value, size_t size)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
     
-    log_msg("\nfac_getxattr(path = \"%s\", name = \"%s\", value = 0x%08x, size = %d)\n",
+    log_msg("\nft_getxattr(path = \"%s\", name = \"%s\", value = 0x%08x, size = %d)\n",
 	    path, name, value, size);
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
     
     retstat = lgetxattr(fpath, name, value, size);
     if (retstat < 0)
-	retstat = fac_error("fac_getxattr lgetxattr");
+	retstat = ft_error("ft_getxattr lgetxattr");
     else
 	log_msg("    value = \"%s\"\n", value);
     
@@ -796,20 +780,20 @@ int fac_getxattr(const char *path, const char *name, char *value, size_t size)
 }
 
 /** List extended attributes */
-int fac_listxattr(const char *path, char *list, size_t size)
+int ft_listxattr(const char *path, char *list, size_t size)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
     char *ptr;
     
-    log_msg("fac_listxattr(path=\"%s\", list=0x%08x, size=%d)\n",
+    log_msg("ft_listxattr(path=\"%s\", list=0x%08x, size=%d)\n",
 	    path, list, size
 	    );
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
     
     retstat = llistxattr(fpath, list, size);
     if (retstat < 0)
-	retstat = fac_error("fac_listxattr llistxattr");
+	retstat = ft_error("ft_listxattr llistxattr");
     
     log_msg("    returned attributes (length %d):\n", retstat);
     for (ptr = list; ptr < list + retstat; ptr += strlen(ptr)+1)
@@ -819,18 +803,18 @@ int fac_listxattr(const char *path, char *list, size_t size)
 }
 
 /** Remove extended attributes */
-int fac_removexattr(const char *path, const char *name)
+int ft_removexattr(const char *path, const char *name)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
     
-    log_msg("\nfac_removexattr(path=\"%s\", name=\"%s\")\n",
+    log_msg("\nft_removexattr(path=\"%s\", name=\"%s\")\n",
 	    path, name);
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
     
     retstat = lremovexattr(fpath, name);
     if (retstat < 0)
-	retstat = fac_error("fac_removexattr lrmovexattr");
+	retstat = ft_error("ft_removexattr lrmovexattr");
     
     return retstat;
 }
@@ -843,17 +827,17 @@ int fac_removexattr(const char *path, const char *name)
  *
  * Introduced in version 2.3
  */
-int fac_opendir(const char *path, struct fuse_file_info *fi)
+int ft_opendir(const char *path, struct fuse_file_info *fi)
 {
     DIR *dp;
     int retstat = 0;
     char fpath[PATH_MAX];
     
-    log_msg("\nfac_opendir(path=\"%s\", fi=0x%08x)\n",
+    log_msg("\nft_opendir(path=\"%s\", fi=0x%08x)\n",
 	  path, fi);
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
     
-    int prm = select_prm(path, fuse_get_context()->uid, OPENDIR);
+    int prm = select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, OPENDIR);
     
     if (!prm)
         retstat = -EACCES;
@@ -861,7 +845,7 @@ int fac_opendir(const char *path, struct fuse_file_info *fi)
     {
         dp = opendir(fpath);
         if (dp == NULL)
-            retstat = fac_error("fac_opendir opendir");
+            retstat = ft_error("ft_opendir opendir");
 
         fi->fh = (intptr_t) dp;
 
@@ -892,7 +876,7 @@ int fac_opendir(const char *path, struct fuse_file_info *fi)
  *
  * Introduced in version 2.3
  */
-int fac_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset,
+int ft_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset,
 	       struct fuse_file_info *fi)
 {
     int retstat = 0;
@@ -900,13 +884,13 @@ int fac_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
     char fpath[PATH_MAX];
     struct dirent *de;
     
-    log_msg("\nfac_readdir(path=\"%s\", buf=0x%08x, filler=0x%08x, offset=%lld, fi=0x%08x)\n",
+    log_msg("\nft_readdir(path=\"%s\", buf=0x%08x, filler=0x%08x, offset=%lld, fi=0x%08x)\n",
 	    path, buf, filler, offset, fi);
     // once again, no need for fullpath -- but note that I need to cast fi->fh
     dp = (DIR *) (uintptr_t) fi->fh;
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
     
-    int prm = select_prm(path, fuse_get_context()->uid, READDIR);
+    int prm = select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, READDIR);
     
     if (!prm)
         retstat = -EACCES;
@@ -918,7 +902,7 @@ int fac_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
         // which I can get an error from readdir()
         de = readdir(dp);
         if (de == 0) {
-            retstat = fac_error("fac_readdir readdir");
+            retstat = ft_error("ft_readdir readdir");
             return retstat;
         }
 
@@ -929,7 +913,7 @@ int fac_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
         do {
             log_msg("calling filler with name %s\n", de->d_name);
             if (filler(buf, de->d_name, NULL, 0) != 0) {
-                log_msg("    ERROR fac_readdir filler:  buffer full");
+                log_msg("    ERROR ft_readdir filler:  buffer full");
                 return -ENOMEM;
             }
         } while ((de = readdir(dp)) != NULL);
@@ -944,11 +928,11 @@ int fac_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offse
  *
  * Introduced in version 2.3
  */
-int fac_releasedir(const char *path, struct fuse_file_info *fi)
+int ft_releasedir(const char *path, struct fuse_file_info *fi)
 {
     int retstat = 0;
     
-    log_msg("\nfac_releasedir(path=\"%s\", fi=0x%08x)\n",
+    log_msg("\nft_releasedir(path=\"%s\", fi=0x%08x)\n",
 	    path, fi);
     log_fi(fi);
     //closing is always avalible
@@ -964,13 +948,11 @@ int fac_releasedir(const char *path, struct fuse_file_info *fi)
  *
  * Introduced in version 2.3
  */
-// when exactly is this called?  when a user calls fsync and it
-// happens to be a directory? ???
-int fac_fsyncdir(const char *path, int datasync, struct fuse_file_info *fi)
+int ft_fsyncdir(const char *path, int datasync, struct fuse_file_info *fi)
 {
     int retstat = 0;
     
-    log_msg("\nfac_fsyncdir(path=\"%s\", datasync=%d, fi=0x%08x)\n",
+    log_msg("\nft_fsyncdir(path=\"%s\", datasync=%d, fi=0x%08x)\n",
 	    path, datasync, fi);
     log_fi(fi);
     //do nothing
@@ -987,21 +969,15 @@ int fac_fsyncdir(const char *path, int datasync, struct fuse_file_info *fi)
  * Introduced in version 2.3
  * Changed in version 2.6
  */
-// Undocumented but extraordinarily useful fact:  the fuse_context is
-// set up before this function is called, and
-// fuse_get_context()->private_data returns the user_data passed to
-// fuse_main().  Really seems like either it should be a third
-// parameter coming in here, or else the fact should be documented
-// (and this might as well return void, as it did in older versions of
-// FUSE).
-void *fac_init(struct fuse_conn_info *conn)
+
+void *ft_init(struct fuse_conn_info *conn)
 {
-    log_msg("\nfac_init()\n");
+    log_msg("\nft_init()\n");
     
     log_conn(conn);
     log_fuse_context(fuse_get_context());
     
-    return FAC_DATA;
+    return FT_DATA;
 }
 
 /**
@@ -1011,9 +987,9 @@ void *fac_init(struct fuse_conn_info *conn)
  *
  * Introduced in version 2.3
  */
-void fac_destroy(void *userdata)
+void ft_destroy(void *userdata)
 {
-    log_msg("\nfac_destroy(userdata=0x%08x)\n", userdata);
+    log_msg("\nft_destroy(userdata=0x%08x)\n", userdata);
 }
 
 /**
@@ -1027,16 +1003,16 @@ void fac_destroy(void *userdata)
  *
  * Introduced in version 2.5
  */
-int fac_access(const char *path, int mask)
+int ft_access(const char *path, int mask)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
    
-    log_msg("\nfac_access(path=\"%s\", mask=0%o)\n",
+    log_msg("\nft_access(path=\"%s\", mask=0%o)\n",
 	    path, mask);
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
     
-    int prm = select_prm(path, fuse_get_context()->uid, ACCESS);
+    int prm = select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, ACCESS);
     
     if (!prm)
         retstat = -EACCES;
@@ -1045,7 +1021,7 @@ int fac_access(const char *path, int mask)
         retstat = access(fpath, mask);
 
         if (retstat < 0)
-            retstat = fac_error("fac_access access");
+            retstat = ft_error("ft_access access");
     }
     
     return retstat;
@@ -1063,17 +1039,17 @@ int fac_access(const char *path, int mask)
  *
  * Introduced in version 2.5
  */
-int fac_create(const char *path, mode_t mode, struct fuse_file_info *fi)
+int ft_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
     int fd;
     
-    log_msg("\nfac_create(path=\"%s\", mode=0%03o, fi=0x%08x)\n",
+    log_msg("\nft_create(path=\"%s\", mode=0%03o, fi=0x%08x)\n",
 	    path, mode, fi);
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
 
-    int prm = select_dir_prm(path, fuse_get_context()->uid, CREATE, 1);
+    int prm = select_dir_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, CREATE, 1);
     
     if (!prm)
         retstat = -EACCES;
@@ -1085,10 +1061,13 @@ int fac_create(const char *path, mode_t mode, struct fuse_file_info *fi)
         
         if (fd < 0)
         {
-            retstat = fac_error("fac_create creat");
+            retstat = ft_error("ft_create creat");
         }
         else
-            put_file_prm(path, fuse_get_context()->uid);
+        {
+            put_file_prm(path, fuse_get_context()->uid, fuse_get_context()->gid);
+            //upd_prms(path, mode);
+        }
     }
     
     return retstat;
@@ -1106,18 +1085,18 @@ int fac_create(const char *path, mode_t mode, struct fuse_file_info *fi)
  *
  * Introduced in version 2.5
  */
-int fac_ftruncate(const char *path, off_t offset, struct fuse_file_info *fi)
+int ft_ftruncate(const char *path, off_t offset, struct fuse_file_info *fi)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
     
-    log_msg("\nfac_ftruncate(path=\"%s\", offset=%lld, fi=0x%08x)\n",
+    log_msg("\nft_ftruncate(path=\"%s\", offset=%lld, fi=0x%08x)\n",
 	    path, offset, fi);
     log_fi(fi);
     
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
     
-    int prm = select_prm(path, fuse_get_context()->uid, FTRUNCATE);
+    int prm = select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, FTRUNCATE);
     
     if (!prm)
         retstat = -EACCES;
@@ -1125,7 +1104,7 @@ int fac_ftruncate(const char *path, off_t offset, struct fuse_file_info *fi)
     {
         retstat = ftruncate(fi->fh, offset);
         if (retstat < 0)
-            retstat = fac_error("fac_ftruncate ftruncate");
+            retstat = ft_error("ft_ftruncate ftruncate");
     }
     
     return retstat;
@@ -1143,25 +1122,21 @@ int fac_ftruncate(const char *path, off_t offset, struct fuse_file_info *fi)
  *
  * Introduced in version 2.5
  */
-int fac_fgetattr(const char *path, struct stat *statbuf, struct fuse_file_info *fi)
+int ft_fgetattr(const char *path, struct stat *statbuf, struct fuse_file_info *fi)
 {
     int retstat = 0;
     char fpath[PATH_MAX];
     
-    log_msg("\nfac_fgetattr(path=\"%s\", statbuf=0x%08x, fi=0x%08x)\n",
+    log_msg("\nft_fgetattr(path=\"%s\", statbuf=0x%08x, fi=0x%08x)\n",
 	    path, statbuf, fi);
     log_fi(fi);
 
-    // On FreeBSD, trying to do anything with the mountpoint ends up
-    // opening it, and then using the FD for an fgetattr.  So in the
-    // special case of a path of "/", I need to do a getattr on the
-    // underlying root directory instead of doing the fgetattr().
     if (!strcmp(path, "/"))
-	return fac_getattr(path, statbuf);
+	return ft_getattr(path, statbuf);
     
-    fac_fullpath(fpath, path);
+    ft_fullpath(fpath, path);
     
-    int prm = select_prm(path, fuse_get_context()->uid, FGETATTR);
+    int prm = select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, FGETATTR);
     
     if (!prm)
         retstat = -EACCES;
@@ -1169,7 +1144,7 @@ int fac_fgetattr(const char *path, struct stat *statbuf, struct fuse_file_info *
     {
         retstat = fstat(fi->fh, statbuf);
         if (retstat < 0)
-            retstat = fac_error("fac_fgetattr fstat");
+            retstat = ft_error("ft_fgetattr fstat");
     }
     
     log_stat(statbuf);
@@ -1177,51 +1152,51 @@ int fac_fgetattr(const char *path, struct stat *statbuf, struct fuse_file_info *
     return retstat;
 }
 
-struct fuse_operations fac_oper = {
-  .getattr = fac_getattr,
-  .readlink = fac_readlink,
+struct fuse_operations ft_oper = {
+  .getattr = ft_getattr,
+  .readlink = ft_readlink,
   // no .getdir -- that's deprecated
   .getdir = NULL,
-  .mknod = fac_mknod,
-  .mkdir = fac_mkdir,
-  .unlink = fac_unlink,
-  .rmdir = fac_rmdir,
-  .symlink = fac_symlink,
-  .rename = fac_rename,
-  .link = fac_link,
-  .chmod = fac_chmod,
-  .chown = fac_chown,
-  .truncate = fac_truncate,
-  .utime = fac_utime,
-  .open = fac_open,
-  .read = fac_read,
-  .write = fac_write,
-  /** Just a placeholder, don't set */ // huh???
-  .statfs = fac_statfs,
-  .flush = fac_flush,
-  .release = fac_release,
-  .fsync = fac_fsync,
+  .mknod = ft_mknod,
+  .mkdir = ft_mkdir,
+  .unlink = ft_unlink,
+  .rmdir = ft_rmdir,
+  .symlink = ft_symlink,
+  .rename = ft_rename,
+  .link = ft_link,
+  .chmod = ft_chmod,
+  .chown = ft_chown,
+  .truncate = ft_truncate,
+  .utime = ft_utime,
+  .open = ft_open,
+  .read = ft_read,
+  .write = ft_write,
+  /** Just a placeholder, don't set */ 
+  .statfs = ft_statfs,
+  .flush = ft_flush,
+  .release = ft_release,
+  .fsync = ft_fsync,
   
 #ifdef HAVE_SYS_XATTR_H
-  .setxattr = fac_setxattr,
-  .getxattr = fac_getxattr,
-  .listxattr = fac_listxattr,
-  .removexattr = fac_removexattr,
+  .setxattr = ft_setxattr,
+  .getxattr = ft_getxattr,
+  .listxattr = ft_listxattr,
+  .removexattr = ft_removexattr,
 #endif
   
-  .opendir = fac_opendir,
-  .readdir = fac_readdir,
-  .releasedir = fac_releasedir,
-  .fsyncdir = fac_fsyncdir,
-  .init = fac_init,
-  .destroy = fac_destroy,
-  .access = fac_access,
-  .create = fac_create,
-  .ftruncate = fac_ftruncate,
-  .fgetattr = fac_fgetattr
+  .opendir = ft_opendir,
+  .readdir = ft_readdir,
+  .releasedir = ft_releasedir,
+  .fsyncdir = ft_fsyncdir,
+  .init = ft_init,
+  .destroy = ft_destroy,
+  .access = ft_access,
+  .create = ft_create,
+  .ftruncate = ft_ftruncate,
+  .fgetattr = ft_fgetattr
 };
 
-void fac_usage()
+void ft_usage()
 {
     fprintf(stderr, "usage:  facfs [FUSE and mount options] rootDir mountPoint\n");
     abort();
@@ -1230,7 +1205,7 @@ void fac_usage()
 int main(int argc, char *argv[])
 {
     int fuse_stat;
-    struct fac_state *fac_data;
+    struct ft_state *ft_data;
 
     // facfs doesn't do any access checking on its own (the comment
     // blocks in fuse.h mention some of the functions that need
@@ -1252,37 +1227,38 @@ int main(int argc, char *argv[])
     // rootpoint or mountpoint whose name starts with a hyphen, but so
     // will a zillion other programs)
     if ((argc < 3) || (argv[argc-2][0] == '-') || (argv[argc-1][0] == '-'))
-	fac_usage();
+	ft_usage();
 
-    fac_data = malloc(sizeof(struct fac_state));
-    if (fac_data == NULL) {
+    ft_data = malloc(sizeof(struct ft_state));
+    if (ft_data == NULL) {
 	perror("main calloc");
 	abort();
     }
 
     // Pull the rootdir out of the argument list and save it in my
     // internal data
+    // -log in argv[1] for set loging on
     
     if (strcmp("-log", argv[1]) == 0)
     {
-        fac_data->logfile = log_open();
+        ft_data->logfile = log_open();
         argc --;
         argv ++;
     }
     else
-        fac_data->logfile = NULL;
+        ft_data->logfile = NULL;
         
     
-    fac_data->rootdir = realpath(argv[argc-2], NULL);
+    ft_data->rootdir = realpath(argv[argc-2], NULL);
     argv[argc-2] = argv[argc-1];
     argv[argc-1] = NULL;
     argc--;
     
-    init_db(fac_data->rootdir, realpath(argv[argc-1], NULL), getuid());
+    init_db(ft_data->rootdir, realpath(argv[argc-1], NULL), getuid(), getgid());
     
     // turn over control to fuse
     fprintf(stderr, "about to call fuse_main\n");
-    fuse_stat = fuse_main(argc, argv, &fac_oper, fac_data);
+    fuse_stat = fuse_main(argc, argv, &ft_oper, ft_data);
     fprintf(stderr, "fuse_main returned %d\n", fuse_stat);
     
     return fuse_stat;
