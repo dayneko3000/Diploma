@@ -42,7 +42,7 @@
       </toolsSet>
       <compileType>
         <cTool>
-          <commandLine>-D_FILE_OFFSET_BITS=64</commandLine>
+          <commandLine>-D_FILE_OFFSET_BITS=64 -g -O0</commandLine>
         </cTool>
         <linkerTool>
           <linkerLibItems>

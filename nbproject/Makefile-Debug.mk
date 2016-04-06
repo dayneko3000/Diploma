@@ -41,7 +41,7 @@ OBJECTFILES= \
 
 
 # C Compiler Flags
-CFLAGS=-D_FILE_OFFSET_BITS=64
+CFLAGS=-D_FILE_OFFSET_BITS=64 -g -O0
 
 # CC Compiler Flags
 CCFLAGS=

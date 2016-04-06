@@ -15,19 +15,18 @@
 #ifndef DB_H
 #define DB_H
 
-#define OWNER_PRMS -3
-#define GROUP_PRMS -4
-#define OTHER_PRMS -5
+#define STANDART_PRMS -1
 
 #define PREMISSIONS_SIZE 30
 #define QUERY_MAX 500
 #define PATH_MAX 500
+#define PRM_MAX 50
 #define DEEP_MAX 200
 #define UID_MAX 50
 #define EXIST_MAX 2
 
-#define FULL 67108863
-#define READ_ONLY 29746687
+#define FULL_PRMS 67108863
+#define READ_ONLY_PRMS 29746687
 
 #define EXECUTE (1 << 0)
 #define GETATTR (1 << 1)
@@ -56,7 +55,10 @@
 #define FSYNCDIR (1 << 24)
 #define CREATE (1 << 25)
 
+#define START_PRMS GETATTR + STATFS + SYMLINK + FSYNCDIR + ACCESS + FSYNC + CHOWN + CHMOD + UTIME + READLINK + FGETATTR + TRUNCATE + FTRUNCATE
 
+#define DIR_MODE 16893
+#define MODE_MASK 65024
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -68,10 +70,11 @@
 char * root_path;
 sqlite3 *db;
 
-int select_dir_prm(const char *, const uid_t *, const gid_t *, const int, const int);
-int select_file_prm(const char *, const int, const int);
-int select_prm(const char *, const uid_t *, const gid_t *, const int);
-int put_file_prm(const char *, const uid_t *, const gid_t *);
+int select_dir_prm(const char *, const uid_t *, const gid_t *, const int);
+int select_file_prm(const char *, const char *, const int);
+int select_prm(const char *, const uid_t *, const gid_t *);
+int put_file_prm(const char *, const uid_t *, const gid_t *, const mode_t);
+int get_mode(const char *);
 int upd_own(const char *, const uid_t *, const gid_t *);
 int upd_path(const char *, const char *, const char *);
 int upd_prms(const char *, const mode_t);
