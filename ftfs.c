@@ -84,7 +84,7 @@ int ft_getattr(const char *path, struct stat *statbuf)
     
     ft_fullpath(fpath, path);
 
-    int prm = (select_dir_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, 1) & GETATTR) != 0;
+    int prm = (get_dir_prms(path, fuse_get_context()->uid, fuse_get_context()->gid, 1) & GETATTR) != 0;
 
     if (!prm)
     {
@@ -96,7 +96,7 @@ int ft_getattr(const char *path, struct stat *statbuf)
         if (retstat != 0)
             retstat = ft_error("ft_getattr lstat");
         else
-            statbuf->st_mode = get_mode(path);
+            statbuf->st_mode = get_field(path, "mode");
     }
     
     log_stat(statbuf);
@@ -122,7 +122,7 @@ int ft_readlink(const char *path, char *link, size_t size)
     
     ft_fullpath(fpath, path);
     
-    int prm = (select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid) & READLINK) != 0;
+    int prm = (get_prms(path, fuse_get_context()->uid, fuse_get_context()->gid) & READLINK) != 0;
     
     if (!prm)
         retstat = -EACCES;
@@ -156,7 +156,7 @@ int ft_mknod(const char *path, mode_t mode, dev_t dev)
     ft_fullpath(fpath, path);
     
     // On Linux this could just be 'mknod(path, mode, rdev)' but this
-    int prm = (select_dir_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, 1) & MKNOD) != 0;
+    int prm = (get_dir_prms(path, fuse_get_context()->uid, fuse_get_context()->gid, 1) & MKNOD) != 0;
     
     if (!prm)
         retstat = -EACCES;
@@ -173,8 +173,8 @@ int ft_mknod(const char *path, mode_t mode, dev_t dev)
                     retstat = ft_error("ft_mknod close");
                 else
                 {
-                    put_file_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, mode);
-                    //upd_prms(path, mode);
+                    add_file(path, fuse_get_context()->uid, fuse_get_context()->gid, mode & ~(fuse_get_context()->umask));
+                    //update_permissions(path, mode);
                 }
             }
         } else
@@ -184,8 +184,8 @@ int ft_mknod(const char *path, mode_t mode, dev_t dev)
                     retstat = ft_error("ft_mknod mkfifo");
                 else
                 {
-                    put_file_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, mode);
-                    //upd_prms(path, mode);
+                    add_file(path, fuse_get_context()->uid, fuse_get_context()->gid, mode & ~(fuse_get_context()->umask));
+                    //update_permissions(path, mode);
                 }
             } else {
                 retstat = mknod(fpath, mode, dev);
@@ -193,8 +193,8 @@ int ft_mknod(const char *path, mode_t mode, dev_t dev)
                     retstat = ft_error("ft_mknod mknod");
                 else
                 {
-                    put_file_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, mode);
-                   // upd_prms(path, mode);
+                    add_file(path, fuse_get_context()->uid, fuse_get_context()->gid, mode & ~(fuse_get_context()->umask));
+                   // update_permissions(path, mode);
                 }
             }
     }
@@ -213,7 +213,7 @@ int ft_mkdir(const char *path, mode_t mode)
     
     ft_fullpath(fpath, path);
     
-    int prm = (select_dir_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, 1) & MKDIR) != 0;
+    int prm = (get_dir_prms(path, fuse_get_context()->uid, fuse_get_context()->gid, 1) & MKDIR) != 0;
 
     if (!prm)
         retstat = -EACCES;
@@ -225,8 +225,8 @@ int ft_mkdir(const char *path, mode_t mode)
             retstat = ft_error("ft_mkdir mkdir");
         else
         {
-            put_file_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, DIR_MODE);
-            //upd_prms(path, mode);
+            add_file(path, fuse_get_context()->uid, fuse_get_context()->gid, DIR_MODE & ~(fuse_get_context()->umask));
+            //update_permissions(path, mode);
         }
 
     }
@@ -245,7 +245,7 @@ int ft_unlink(const char *path)
     
     ft_fullpath(fpath, path);
     
-    int prm = (select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid) & UNLINK) != 0;
+    int prm = (get_prms(path, fuse_get_context()->uid, fuse_get_context()->gid) & UNLINK) != 0;
     
     if (!prm)
         retstat = -EACCES;
@@ -256,7 +256,7 @@ int ft_unlink(const char *path)
             retstat = ft_error("ft_unlink unlink");
         else
         {
-            rem_prm(path);
+            remove_file(path);
         }
     }
     
@@ -274,7 +274,7 @@ int ft_rmdir(const char *path)
     
     ft_fullpath(fpath, path);
     
-    int prm = (select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid) & RMDIR) != 0;
+    int prm = (get_prms(path, fuse_get_context()->uid, fuse_get_context()->gid) & RMDIR) != 0;
     
     if (!prm)
         retstat = -EACCES;
@@ -285,7 +285,7 @@ int ft_rmdir(const char *path)
             retstat = ft_error("ft_rmdir rmdir");
         else
         {
-            rem_prm(fpath);
+            remove_file(fpath);
         }
     }
     
@@ -305,7 +305,7 @@ int ft_symlink(const char *path, const char *link)
     ft_fullpath(flink, link);
     ft_fullpath(fpath, path);
     
-    int prm = (select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid) & SYMLINK) != 0;
+    int prm = (get_prms(path, fuse_get_context()->uid, fuse_get_context()->gid) & SYMLINK) != 0;
 
     if (!prm)
         retstat = -EACCES;
@@ -335,7 +335,7 @@ int ft_rename(const char *path, const char *newpath)
     ft_fullpath(fpath, path);
     ft_fullpath(fnewpath, newpath);
     
-    int prm = (select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid) & RENAME) != 0;
+    int prm = (get_prms(path, fuse_get_context()->uid, fuse_get_context()->gid) & RENAME) != 0;
     
     if (!prm)
     {
@@ -351,12 +351,7 @@ int ft_rename(const char *path, const char *newpath)
             retstat = ft_error("ft_rename rename");
         else
         {
-            upd_path(path, newpath, "user_prm_list");
-            upd_path(path, newpath, "group_prm_list");
-            upd_path(path, newpath, "other_prm_list");
-            upd_path(path, newpath, "mode_list");
-            upd_path(path, newpath, "own_list");
-            upd_path(path, newpath, "group_own_list");
+            update_path(path, newpath);
         }
     }
     return retstat;
@@ -374,7 +369,7 @@ int ft_link(const char *path, const char *newpath)
     ft_fullpath(fpath, path);
     ft_fullpath(fnewpath, newpath);
     
-    int prm = (select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid) & LINK) != 0;
+    int prm = (get_prms(path, fuse_get_context()->uid, fuse_get_context()->gid) & LINK) != 0;
     
     if (!prm)
         retstat = -EACCES;
@@ -405,7 +400,7 @@ int ft_chmod(const char *path, mode_t mode)
     
     ft_fullpath(fpath, path);
     
-    int prm = (select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid) & CHMOD) != 0;
+    int prm = (get_prms(path, fuse_get_context()->uid, fuse_get_context()->gid) & CHMOD) != 0;
     
     if (!prm)
         retstat = -EACCES;
@@ -415,7 +410,7 @@ int ft_chmod(const char *path, mode_t mode)
         if (retstat < 0)
             retstat = ft_error("ft_chmod chmod");
         else
-            upd_prms(path, mode);
+            update_permissions(path, mode);
     }
     
     return retstat;
@@ -433,7 +428,7 @@ int ft_chown(const char *path, uid_t uid, gid_t gid)
     
     ft_fullpath(fpath, path);
     
-    int prm = (select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid) & CHOWN) != 0;
+    int prm = (get_prms(path, fuse_get_context()->uid, fuse_get_context()->gid) & CHOWN) != 0;
     
     if (!prm)
         retstat = -EACCES;
@@ -445,7 +440,7 @@ int ft_chown(const char *path, uid_t uid, gid_t gid)
             retstat = ft_error("ft_chown chown");
         }
         else
-            upd_own(path, uid, gid);
+            update_owners(path, uid, gid);
     }
     
     return retstat;
@@ -462,7 +457,7 @@ int ft_truncate(const char *path, off_t newsize)
     
     ft_fullpath(fpath, path);
     
-    int prm = (select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid) & TRUNCATE) != 0;
+    int prm = (get_prms(path, fuse_get_context()->uid, fuse_get_context()->gid) & TRUNCATE) != 0;
 
     if (!prm)
         retstat = -EACCES;
@@ -488,7 +483,7 @@ int ft_utime(const char *path, struct utimbuf *ubuf)
     
     ft_fullpath(fpath, path);
     
-    int prm = (select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid) & UTIME) != 0;
+    int prm = (get_prms(path, fuse_get_context()->uid, fuse_get_context()->gid) & UTIME) != 0;
     
     if (!prm)
     {
@@ -525,9 +520,10 @@ int ft_open(const char *path, struct fuse_file_info *fi)
     
     ft_fullpath(fpath, path);
     
-    int prm = (select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid) & OPEN) != 0;
+    int prms = get_prms(path, fuse_get_context()->uid, fuse_get_context()->gid);
     
-    if (!prm)
+    if ((prms & OPEN) == 0 || ((prms & WRITE) == 0 && ((fi->flags & O_RDWR) != 0 || (fi->flags & O_WRONLY) != 0))
+            || ((prms & READ) == 0 && ((fi->flags & O_RDWR) != 0 || (fi->flags & O_RDONLY) != 0)))
        retstat = -EACCES;
     else
     {
@@ -565,7 +561,7 @@ int ft_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
     char fpath[PATH_MAX];
     ft_fullpath(fpath, path); //but I need fpath for db operations
     
-    int prm = (select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid) & READ) != 0;
+    int prm = (get_prms(path, fuse_get_context()->uid, fuse_get_context()->gid) & READ) != 0;
     
     if (!prm)
        retstat = -EACCES;
@@ -597,7 +593,7 @@ int ft_write(const char *path, const char *buf, size_t size, off_t offset,
 	    );
     log_fi(fi);
     
-    int prm = (select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid) & WRITE) != 0;
+    int prm = (get_prms(path, fuse_get_context()->uid, fuse_get_context()->gid) & WRITE) != 0;
     
     if (!prm)
        retstat = -EACCES;
@@ -627,7 +623,7 @@ int ft_statfs(const char *path, struct statvfs *statv)
 	    path, statv);
     ft_fullpath(fpath, path);
     
-    int prm = (select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid) & STATFS) != 0;
+    int prm = (get_prms(path, fuse_get_context()->uid, fuse_get_context()->gid) & STATFS) != 0;
     
     if (!prm)
        retstat = -EACCES;
@@ -720,27 +716,20 @@ int ft_fsync(const char *path, int datasync, struct fuse_file_info *fi)
     char fpath[PATH_MAX];
     ft_fullpath(fpath, path); //I need fpath for db operations
     
-    int prm = (select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid) & FSYNC) != 0;
-    
-    if (!prm)
-       retstat = -EACCES;
+    log_msg("\nft_fsync(path=\"%s\", datasync=%d, fi=0x%08x)\n",
+            path, datasync, fi);
+    log_fi(fi);
+
+    // some unix-like systems (notably freebsd) don't have a datasync call
+#ifdef HAVE_FDATASYNC
+    if (datasync)
+        retstat = fdatasync(fi->fh);
     else
-    {
-        log_msg("\nft_fsync(path=\"%s\", datasync=%d, fi=0x%08x)\n",
-                path, datasync, fi);
-        log_fi(fi);
+#endif	
+        retstat = fsync(fi->fh);
 
-        // some unix-like systems (notably freebsd) don't have a datasync call
-    #ifdef HAVE_FDATASYNC
-        if (datasync)
-            retstat = fdatasync(fi->fh);
-        else
-    #endif	
-            retstat = fsync(fi->fh);
-
-        if (retstat < 0)
-            ft_error("ft_fsync fsync");
-    }
+    if (retstat < 0)
+        ft_error("ft_fsync fsync");
     
     return retstat;
 }
@@ -840,7 +829,7 @@ int ft_opendir(const char *path, struct fuse_file_info *fi)
 	  path, fi);
     ft_fullpath(fpath, path);
     
-    int prm = (select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid) & OPENDIR) != 0;
+    int prm = (get_prms(path, fuse_get_context()->uid, fuse_get_context()->gid) & OPENDIR) != 0;
     
     if (!prm)
         retstat = -EACCES;
@@ -893,7 +882,7 @@ int ft_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset
     dp = (DIR *) (uintptr_t) fi->fh;
     ft_fullpath(fpath, path);
     
-    int prm = (select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid) & READDIR) != 0;
+    int prm = (get_prms(path, fuse_get_context()->uid, fuse_get_context()->gid) & READDIR) != 0;
     
     if (!prm)
         retstat = -EACCES;
@@ -1016,17 +1005,10 @@ int ft_access(const char *path, int mask)
 	    path, mask);
     ft_fullpath(fpath, path);
     
-    int prm = (select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid) & ACCESS) != 0;
-    
-    if (!prm)
-        retstat = -EACCES;
-    else
-    {
-        retstat = access(fpath, mask);
+    retstat = access(fpath, mask);
 
-        if (retstat < 0)
-            retstat = ft_error("ft_access access");
-    }
+    if (retstat < 0)
+        retstat = ft_error("ft_access access");
     
     return retstat;
 }
@@ -1053,7 +1035,7 @@ int ft_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 	    path, mode, fi);
     ft_fullpath(fpath, path);
 
-    int prm = (select_dir_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, 1) & CREATE) != 0;
+    int prm = (get_dir_prms(path, fuse_get_context()->uid, fuse_get_context()->gid, 1) & CREATE) != 0;
     
     if (!prm)
         retstat = -EACCES;
@@ -1069,8 +1051,8 @@ int ft_create(const char *path, mode_t mode, struct fuse_file_info *fi)
         }
         else
         {
-            put_file_prm(path, fuse_get_context()->uid, fuse_get_context()->gid, mode);
-            //upd_prms(path, mode);
+            add_file(path, fuse_get_context()->uid, fuse_get_context()->gid, mode & ~(fuse_get_context()->umask));
+            //update_permissions(path, mode);
         }
     }
     
@@ -1100,7 +1082,7 @@ int ft_ftruncate(const char *path, off_t offset, struct fuse_file_info *fi)
     
     ft_fullpath(fpath, path);
     
-    int prm = (select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid) & FTRUNCATE) != 0;
+    int prm = (get_prms(path, fuse_get_context()->uid, fuse_get_context()->gid) & FTRUNCATE) != 0;
     
     if (!prm)
         retstat = -EACCES;
@@ -1140,7 +1122,7 @@ int ft_fgetattr(const char *path, struct stat *statbuf, struct fuse_file_info *f
     
     ft_fullpath(fpath, path);
     
-    int prm = (select_prm(path, fuse_get_context()->uid, fuse_get_context()->gid) & FGETATTR) != 0;
+    int prm = (get_prms(path, fuse_get_context()->uid, fuse_get_context()->gid) & FGETATTR) != 0;
     
     if (!prm)
         retstat = -EACCES;

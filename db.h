@@ -18,7 +18,7 @@
 #define STANDART_PRMS -1
 
 #define PREMISSIONS_SIZE 30
-#define QUERY_MAX 500
+#define QUERY_MAX 1000
 #define PATH_MAX 500
 #define PRM_MAX 50
 #define DEEP_MAX 200
@@ -31,7 +31,7 @@
 #define EXECUTE (1 << 0)
 #define GETATTR (1 << 1)
 #define CHMOD (1 << 2)
-#define ACCESS (1 << 3)
+#define FSYNCDIR (1 << 3)
 #define TRUNCATE (1 << 4)
 #define CHOWN (1 << 5)
 #define FSYNC (1 << 6)
@@ -52,10 +52,9 @@
 #define MKDIR (1 << 21)
 #define OPENDIR (1 << 22)
 #define READDIR (1 << 23)
-#define FSYNCDIR (1 << 24)
-#define CREATE (1 << 25)
+#define CREATE (1 << 24)
 
-#define START_PRMS GETATTR + STATFS + SYMLINK + FSYNCDIR + ACCESS + FSYNC + CHOWN + CHMOD + UTIME + READLINK + FGETATTR + TRUNCATE + FTRUNCATE
+#define START_PRMS CHOWN | FSYNCDIR | FSYNC | READLINK | STATFS | FSYNC | OPEN | TRUNCATE | FTRUNCATE
 
 #define DIR_MODE 16893
 #define MODE_MASK 65024
@@ -70,15 +69,15 @@
 char * root_path;
 sqlite3 *db;
 
-int select_dir_prm(const char *, const uid_t *, const gid_t *, const int);
-int select_file_prm(const char *, const char *, const int);
-int select_prm(const char *, const uid_t *, const gid_t *);
-int put_file_prm(const char *, const uid_t *, const gid_t *, const mode_t);
-int get_mode(const char *);
-int upd_own(const char *, const uid_t *, const gid_t *);
-int upd_path(const char *, const char *, const char *);
-int upd_prms(const char *, const mode_t);
-int rem_prm(const char *);
+int get_dir_prms(const char *, const uid_t *, const gid_t *, const int);
+//int select_file_prm(const char *, const char *, const int);
+int get_prms(const char *, const uid_t *, const gid_t *);
+int add_file(const char *, const uid_t *, const gid_t *, const mode_t);
+int get_field(const char *, const char *);
+int update_owners(const char *, const uid_t *, const gid_t *);
+int update_path(const char *, const char *);
+int update_permissions(const char *, const mode_t);
+int remove_file(const char *);
 int init_db(const char *, const char *, const uid_t *, const gid_t *);
 //char * dir_path(const char *);
 #endif /* DB_H */
