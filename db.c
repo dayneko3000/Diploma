@@ -16,15 +16,7 @@
 
 #include "stdlib.h"
 #include "string.h"
-#include <unistd.h>
-
-
-
-/*
-FILE *f = fopen ("/home/roman/Desktop/UntitledFolder/dbdebug.txt","a+");
-fprintf (f,"");
-fclose (f);
-*/
+#include "unistd.h"
 
 static int last_colomn_callback(void *notused, int coln, char **rows, char **colnm)
 {
@@ -286,7 +278,8 @@ int add_file(const char *file, const uid_t *uid, const gid_t *gid, const mode_t 
     char *err = 0;
     char insert_query[QUERY_MAX];
 
-    sprintf(insert_query, "INSERT OR IGNORE INTO file_list (path, uid, gid, mode, owner_prms, group_prms, other_prms) VALUES(\"%s\", %d, %d, %d, %d, %d, %d);", file, (int)uid, (int) gid, (int) mode, FULL_PRMS, FULL_PRMS, READ_ONLY_PRMS);
+    sprintf(insert_query, "INSERT OR IGNORE INTO file_list (path, uid, gid, mode, owner_prms, group_prms, other_prms) VALUES(\"%s\", %d, %d, %d, %d, %d, %d);", 
+            file, (int)uid, (int) gid, (int) mode, FULL_PRMS | (S_ISDIR(mode) ? OPENDIR : 0), FULL_PRMS | (S_ISDIR(mode) ? OPENDIR : 0), READ_ONLY_PRMS | (S_ISDIR(mode) ? OPENDIR : 0));
     if(sqlite3_exec(db, insert_query, NULL, NULL, &err) != SQLITE_OK)
     {
        //пропала база
@@ -370,47 +363,6 @@ int update_path(const char *path, const char *newpath)
     
     sprintf(update_query, "UPDATE file_list SET path = \"%s\" WHERE path = \"%s\"", newpath, path);
     sqlite3_exec(db, update_query, NULL, NULL, &err);
-//    char **res = (char**)malloc(sizeof(char*) * DEEP_MAX);
-//
-//    for (int i = 0; i < DEEP_MAX; i ++)
-//    {
-//        res[i] = (char*)malloc(sizeof(char) * PATH_MAX);
-//    }
-//    
-//    sprintf(select_query, "select * from %s where path like \"%s%%\";", table, path);
-//    quantity = 0;
-//    if (sqlite3_exec(db, select_query, first_colomn_callback, res, &err) != SQLITE_OK)
-//    {
-//        //что-то не так
-//        //скорее всего пропала база
-//    }
-//    
-//    for (int i = 0; i < quantity; i++)
-//    {
-//        int dif_len = strlen(res[i]) - strlen(path);
-//        char *temp = (char *) malloc(sizeof(char) * (dif_len + 1));
-//        char update_query [QUERY_MAX];
-//        
-//        for (int j = strlen(path); j < strlen(res[i]); j++)
-//            temp[j - strlen(path)] = res[i][j];
-//        temp[dif_len] = '\0';
-//        
-//        if (dif_len == 0)
-//            sprintf(update_query, "update or ignore file_list set path = \"%s\" where path = \"%s\";", newpath, res[i]);
-//        else
-//            sprintf(update_query, "update or ignore file_list set path = \"%s%s\" where path = \"%s\";", newpath, temp, res[i]);
-//        if (sqlite3_exec(db, update_query, NULL, NULL, &err) != SQLITE_OK)
-//        {
-//            rem_prm(res[i]);
-//        }
-//        
-//        free(temp);
-//    }
-//    
-//    for (int i = 0; i < DEEP_MAX; i ++){
-//        free(res[i]);
-//    }
-//    free(res);
     
     return 0;
 }
@@ -418,15 +370,15 @@ int update_path(const char *path, const char *newpath)
 
 int init_db(const char *rootdir, const char *mountdir, const uid_t *uid, const gid_t *gid)
 {
-    char *err = NULL, *db_name = "FTDB.db", insert_query [QUERY_MAX];;
+    char *err = NULL, *db_name = "FTDB.db", insert_query [QUERY_MAX];
     root_path = "/";
     sqlite3_stmt *res;
     
     if(sqlite3_open(db_name, &db) != SQLITE_OK)
     {
-        //Ошибка открытия/создания БД
-        //abort();)
+        abort();
     }
+    
     sqlite3_prepare(db,"SELECT SQLITE_VERSION()", -1, &res, 0);
     sqlite3_finalize(res);
     

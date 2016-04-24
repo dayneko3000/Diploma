@@ -5,29 +5,16 @@
   See the file COPYING.
 */
 
-/* 
- * File:   db.h
- * Author: Roman
- *
- * Created on January 9, 2016, 3:03 PM
- */
-
 #ifndef DB_H
 #define DB_H
 
-#define STANDART_PRMS -1
-
-#define PREMISSIONS_SIZE 30
-#define QUERY_MAX 1000
-#define PATH_MAX 500
-#define PRM_MAX 50
-#define DEEP_MAX 200
-#define UID_MAX 50
-#define EXIST_MAX 2
-
-#define FULL_PRMS 67108863
-#define READ_ONLY_PRMS 29746687
-
+#define QUERY_MAX 1000                  /* # chars in a query including nul */
+#define PATH_MAX 500                    /* # chars in a path of file including nul */
+#define PRM_MAX 50                      /* # chars in a permissons string including nul */
+#define UID_MAX 50                      /* # chars in a id string including nul */
+#define EXIST_MAX 2                     /* # chars in a exists string including nul */
+                  
+/* defines of permission bits*/
 #define EXECUTE (1 << 0)
 #define GETATTR (1 << 1)
 #define CHMOD (1 << 2)
@@ -54,31 +41,31 @@
 #define READDIR (1 << 23)
 #define CREATE (1 << 24)
 
-#define START_PRMS CHOWN | FSYNCDIR | FSYNC | READLINK | STATFS | FSYNC | OPEN | TRUNCATE | FTRUNCATE
+#define FULL_PRMS 33554431          /*decemal equivalent of full permission set*/
+#define READ_ONLY_PRMS 29746687     /*decemal equivalent of read only permission set*/
+/*decemal equivalent of permisson set not change by rwx */
+#define START_PRMS CHOWN | FSYNCDIR | FSYNC | READLINK | STATFS | FSYNC | OPEN | TRUNCATE | FTRUNCATE 
 
-#define DIR_MODE 16893
-#define MODE_MASK 65024
+#define DIR_MODE 16384     /*directory bit*/
+
+#define MODE_MASK 65024    /*mask for cutting standard mode bits*/
 
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "sqlite3.h"
 
+char * root_path;    /*path to rootdir*/
+sqlite3 *db;         /*database connection handler*/
 
+int get_dir_prms(const char *, const uid_t *, const gid_t *, const int);    /*get permission bits for directory above*/
+int get_prms(const char *, const uid_t *, const gid_t *);                   /*get permission bits for file*/
+int add_file(const char *, const uid_t *, const gid_t *, const mode_t);     /*add file into database*/
+int update_owners(const char *, const uid_t *, const gid_t *);              /*update owners of file*/
+int update_path(const char *, const char *);                                /*update path of file*/
+int update_permissions(const char *, const mode_t);                         /*update permission bits of file*/
+int remove_file(const char *);                                              /*remove file from database*/
+int init_db(const char *, const char *, const uid_t *, const gid_t *);      /*initialization of database*/
 
-char * root_path;
-sqlite3 *db;
-
-int get_dir_prms(const char *, const uid_t *, const gid_t *, const int);
-//int select_file_prm(const char *, const char *, const int);
-int get_prms(const char *, const uid_t *, const gid_t *);
-int add_file(const char *, const uid_t *, const gid_t *, const mode_t);
-int get_field(const char *, const char *);
-int update_owners(const char *, const uid_t *, const gid_t *);
-int update_path(const char *, const char *);
-int update_permissions(const char *, const mode_t);
-int remove_file(const char *);
-int init_db(const char *, const char *, const uid_t *, const gid_t *);
-//char * dir_path(const char *);
 #endif /* DB_H */
 
