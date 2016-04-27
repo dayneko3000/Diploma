@@ -5,13 +5,6 @@
   See the file COPYING.
 */
 
-/* 
- * File:   db.c
- * Author: Roman
- *
- * Created on January 9, 2016, 3:04 PM
- */
-
 #include "db.h"
 
 #include "stdlib.h"

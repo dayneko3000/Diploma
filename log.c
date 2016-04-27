@@ -5,13 +5,6 @@
   See the file COPYING.
 */
 
-/* 
- * File:   log.c
- * Author: Roman
- *
- * Created on January 9, 2016, 3:00 PM
- */
-
 #include "params.h"
 
 #include <fuse.h>

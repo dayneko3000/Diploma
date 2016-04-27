@@ -8,11 +8,10 @@
   This code is derived from BBFS found http://www.cs.nmsu.edu/~pfeiffer/fuse-tutorial/
   Copyright (C) 2012 Joseph J. Pfeiffer, Jr., Ph.D. <pfeiffer@cs.nmsu.edu>
   His code is licensed under the GNU GPLv3.
-  
-  gcc -Wall `pkg-config fuse --cflags --libs` -o facfs facfs.c
 */
 
 #include "params.h"
+#include "log.h"
 #include "db.h"
 
 #include <ctype.h>
@@ -27,7 +26,7 @@
 #include <unistd.h>
 
 
-#include "log.h"
+
 
 // Report errors to logfile and give -errno to caller
 static int ft_error(char *str)
@@ -1024,7 +1023,6 @@ int main(int argc, char *argv[])
     }
     else
         ft_data->logfile = NULL;
-        
     
     ft_data->rootdir = realpath(argv[argc - 2], NULL);
     argv[argc - 2] = argv[argc - 1];
