@@ -295,7 +295,8 @@ int ft_symlink(const char *path, const char *link)
             retstat = ft_error("ft_symlink symlink");
         else
         {
-            //(link, fuse_get_context()->uid, fuse_get_context()->gid, fuse_get_context()->umask);
+            int mode = get_field(path, "mode");
+            add_file(path, fuse_get_context()->uid, fuse_get_context()->gid, mode & ~(fuse_get_context()->umask));
         }
     }
     return retstat;
@@ -363,7 +364,8 @@ int ft_link(const char *path, const char *newpath)
         }
         else
         {
-            //(newpath, fuse_get_context()->uid, fuse_get_context()->gid, fuse_get_context()->umask);
+            int mode = get_field(path, "mode");
+            add_file(path, fuse_get_context()->uid, fuse_get_context()->gid, mode & ~(fuse_get_context()->umask));
         }
     }
     

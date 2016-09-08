@@ -87,9 +87,6 @@ int check_prm_existence(const char *file)
     sprintf(query, "SELECT EXISTS(SELECT * FROM file_list WHERE path = \"%s\");", file);
     if (sqlite3_exec(db, query, last_colomn_callback, res, &err) != SQLITE_OK)
     {
-        //что-то не так
-        //скорее всего пропала база
-        
         free(res);
         
         return 0;
@@ -105,52 +102,6 @@ int check_prm_existence(const char *file)
     return result;
 } 
 
-//int get_mask(int prm)
-//{
-//    int result = 0;
-//    if ((prm & (READ | GETATTR | FGETATTR)) != 0)
-//        result += 4;
-//    if ((prm & (WRITE | UNLINK | RENAME | LINK | MKNOD | MKDIR | RMDIR | CREATE)) != 0)
-//        result += 2;
-//    if ((prm & EXECUTE) != 0)
-//        result += 1;
-//    return result;
-//}
-
-//int get_mode(const char *file)
-//{
-//    int result = 0;//, g_prms = 0, u_prms = 0, o_prms = 0;
-//    char query[QUERY_MAX], *err = NULL, *res = NULL;
-//    
-//    res = (char *)malloc(sizeof(char) * PRM_MAX);
-//    
-//    sprintf(query, " mode from file_list where path = \"%s\";", file);
-//    if (sqlite3_exec(db, query, last_colomn_callback, res, &err) != SQLITE_OK){
-//        
-//        //что-то не так
-//        //скорее всего пропала база
-//        
-//        free(res);
-//        
-//        return 0;
-//    }
-//    
-//    result = atoi(res);// & MODE_MASK;
-////    sprintf(query, "select prms from user_prm_list where path = \"%s\" and id = %d;", file, STANDART_PRMS);
-////    sqlite3_exec(db, query, last_colomn_callback, res, &err);
-////    u_prms = atoi(res);
-////    sprintf(query, "select prms from group_prm_list where path = \"%s\" and id = %d;", file, STANDART_PRMS);
-////    sqlite3_exec(db, query, last_colomn_callback, res, &err);
-////    g_prms = atoi(res);
-////    sprintf(query, "select prms from other_prm_list where path = \"%s\" and id = %d;", file, STANDART_PRMS);
-////    sqlite3_exec(db, query, last_colomn_callback, res, &err);
-////    o_prms = atoi(res);
-////    result += (get_mask(u_prms) << 6) + (get_mask(g_prms) << 3) + get_mask(o_prms);
-//    free(res);
-//    
-//    return result;
-//}
-
 int select_prm(const char *table, const char *file, const int id)
 {
     char *err = NULL, *res = NULL, query[QUERY_MAX];
@@ -158,11 +109,8 @@ int select_prm(const char *table, const char *file, const int id)
     res = (char *)malloc(sizeof(char) * PRM_MAX);
     
     sprintf(query, "SELECT prms FROM %s WHERE path = \"%s\" AND id = %d;", table, file, id);
-    if (sqlite3_exec(db, query, last_colomn_callback, res, &err) != SQLITE_OK){
-        
-        //что-то не так
-        //скорее всего пропала база
-        
+    if (sqlite3_exec(db, query, last_colomn_callback, res, &err) != SQLITE_OK)
+    {
         free(res);
         
         return 0;
@@ -194,7 +142,7 @@ int get_field(const char *file, const char *field)
 int get_dir_prms(const char *file, const uid_t *uid, const gid_t *gid, const int owning)
 {
     int result = 0, len = 0;
-    char *temp_path = NULL, *table = NULL;
+    char *temp_path = NULL;
     
     if (is_rootdir(file)) 
         return FULL_PRMS;
@@ -226,16 +174,16 @@ int get_dir_prms(const char *file, const uid_t *uid, const gid_t *gid, const int
                 else
                     result = get_field(temp_path, "other_prms");
     
-    //if (strlen(temp_path) != 1)
-        free(temp_path);
+    //result &= get_dir_prms(temp_path, uid, gid, owning);        
+            
+    free(temp_path);
 
     return result;
 }
 
 int get_prms(const char *file, const uid_t *uid, const gid_t *gid)
 {
-    char *res = NULL, *err = NULL, *table = NULL;
-    int result = 0, owner = 0, group_owner = 0, result_id = 0;
+    int result = 0, owner = 0, group_owner = 0;
     
 
     if (check_prm_existence(file) == 0)
@@ -275,7 +223,7 @@ int add_file(const char *file, const uid_t *uid, const gid_t *gid, const mode_t 
             file, (int)uid, (int) gid, (int) mode, FULL_PRMS | (S_ISDIR(mode) ? OPENDIR : 0), FULL_PRMS | (S_ISDIR(mode) ? OPENDIR : 0), READ_ONLY_PRMS | (S_ISDIR(mode) ? OPENDIR : 0));
     if(sqlite3_exec(db, insert_query, NULL, NULL, &err) != SQLITE_OK)
     {
-       //пропала база
+        //ignored
     }
 
     return 0;
@@ -297,8 +245,7 @@ int remove_file(const char *file)
     }
     else
     {
-        //что-то не так
-        //скорее всего пропала база
+        //ignored
     }
     
     return 0;
@@ -311,8 +258,7 @@ int update_owners(const char *path, const uid_t *uid, const gid_t *gid)
     sprintf(update_query, "UPDATE file_list SET uid = %d, gid = %d WHERE path = \"%s\";", (int) uid, (int) gid, path);
     if (sqlite3_exec(db, update_query, NULL, NULL, &err) != SQLITE_OK)
     {
-        //что-то не так
-        //скорее всего пропала база
+        //ignored
     }
     
     return 0;
@@ -391,10 +337,6 @@ int init_db(const char *rootdir, const char *mountdir, const uid_t *uid, const g
     
     sqlite3_exec(db, "CREATE UNIQUE INDEX IF NOT EXISTS config_path_index ON config(path);", NULL, NULL, &err);
     
-  
-    
-    //sqlite3_exec(db, "delete from dir_list;", NULL, NULL, &err);
-    
     if (!check_prm_existence("/"))
     {
         struct stat *stat_buf = (struct stat *)malloc(sizeof(struct stat));
@@ -404,12 +346,10 @@ int init_db(const char *rootdir, const char *mountdir, const uid_t *uid, const g
         free(stat_buf);
     }
     
-    
     sprintf(insert_query, "INSERT OR REPLACE INTO config (id, path) VALUES(1, \"%s\");", mountdir);
     sqlite3_exec(db, insert_query, NULL, NULL, &err);
     sprintf(insert_query, "INSERT OR REPLACE INTO config (id, path) VALUES(2, \"%s\");", rootdir);
     sqlite3_exec(db, insert_query, NULL, NULL, &err);
-    
     
     return 0;
 }
